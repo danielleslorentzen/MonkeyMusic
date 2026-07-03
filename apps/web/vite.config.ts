@@ -2,7 +2,14 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Served from a subpath on GitHub Pages project sites
+// (danielleslorentzen.github.io/MonkeyMusic/); the Pages workflow sets
+// BASE_PATH=/MonkeyMusic/. Dev, local builds, and the Capacitor mobile
+// shell all want root-relative assets, so BASE_PATH is unset there.
+const base = process.env.BASE_PATH ?? '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({

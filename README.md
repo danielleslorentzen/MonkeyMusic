@@ -53,6 +53,20 @@ npm run typecheck
 npm run build      # production PWA → apps/web/dist
 ```
 
+### Hosting (GitHub Pages)
+
+`.github/workflows/pages.yml` builds and deploys `apps/web` to GitHub Pages
+on every push to `main`. The app is a fully static, offline-capable PWA —
+no Cloudflare (or any server) is required for the P0 feature set; the
+SQLite-over-OPFS store uses the SAH-pool VFS, so it needs no cross-origin
+isolation headers, which Pages can't set anyway.
+
+Because a project site is served from a subpath
+(`https://<user>.github.io/MonkeyMusic/`), the workflow builds with
+`BASE_PATH=/MonkeyMusic/` so asset URLs resolve. Local dev, local builds,
+and the Capacitor mobile shell leave `BASE_PATH` unset and serve from `/`.
+To enable it once: repo **Settings → Pages → Source → GitHub Actions**.
+
 ### The accuracy gate (TDD §9.1)
 
 CI synthesizes 8 ground-truth songs (varied keys, modes, tempi, one waltz)
