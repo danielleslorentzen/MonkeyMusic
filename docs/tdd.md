@@ -1,9 +1,32 @@
 # Technical Design Document — "Lyd" Personal Music Education Companion
 
-**Version:** 0.3 (P0 scope locked — see §9.1)
+**Version:** 0.4 (P0 built & shipped — see §0 and §9.1)
 **Status:** For review
-**Stack anchor:** Local LLM (Qwen3.6-35B-A3B-FP8) · Cloudflare edge · Open-source MIR toolchain
-**Working name:** *Lyd* (Norwegian: "sound") — placeholder
+**Stack anchor:** Local LLM (Qwen3.6-35B-A3B-FP8) · GitHub Pages (P0–P1) → Cloudflare edge (P2+) · Open-source MIR toolchain
+**Working name:** *Lyd* (Norwegian: "sound") — placeholder · repo: `MonkeyMusic`
+
+---
+
+## 0. Implementation status (as built)
+
+P0 — "Offline instrument" — is implemented, tested, and deployed. A few
+choices during the build diverged from or sharpened the original design;
+they are captured here and reflected inline in the sections noted. Nothing
+below changes the tenets or the phase goals — these are implementation
+realities, and all of them keep P0 fully offline.
+
+| Area | As designed (v0.3) | As built (v0.4) | Why |
+|---|---|---|---|
+| **Hosting** | Cloudflare Pages (Tier 2) | **GitHub Pages**, deployed by GitHub Actions on push to `main` (§6, §8) | No Cloudflare needed for a static offline PWA; simpler, free, zero-config. Cloudflare edge returns only when Tier-2 features land (P2). |
+| **On-device MIR** | Essentia.js (WASM) + basic-pitch (ONNX) | **`packages/mir`: dependency-free TypeScript** — FFT, chromagram, chord templates + Viterbi HMM, Krumhansl–Schmuckler key, spectral-flux/autocorrelation tempo, YIN pitch (§4.1) | Pure TS runs identically in the browser worker and in Node for the CI accuracy gate; no WASM/AGPL to ship at P0. Essentia.js remains a drop-in behind the same interfaces if dense-mix accuracy demands it. |
+| **Local DB** | wa-sqlite / SQLite-WASM over OPFS | **`@sqlite.org/sqlite-wasm` with the OPFS SAH-pool VFS** in a Worker, in-memory fallback (§5.1) | The SAH-pool VFS needs **no** COOP/COEP cross-origin-isolation headers — which GitHub Pages cannot set — so persistence works on a plain static host. |
+| **Doodle playback** | Bundled FluidR3 SoundFont subset (~8–10 MB) | **Oscillator synth** (no soundfont in P0); SoundFont deferred to P1 (§9.1) | Keeps the offline bundle lean; playback of doodles/notation still works. Curated SoundFont subset arrives with the P1 instrument work. |
+| **Accuracy gate** | ~8 real ground-truth songs | **8 synthesized songs** (sine-partial chords + click track) run in CI (§9.1) | Deterministic, reproducible, and runnable in Node CI. Current standing: 100% chords / 8-of-8 keys / ≤0.2 BPM — but synth audio is cleaner than real recordings, so the gate is a regression floor, not a real-world verdict (see §10 risk 1). |
+| **Notation renderer** | abcjs only (already locked in v0.3 §9.1) | abcjs; added a small ABC⇄notes round-trip (`melodyToAbc` / `abcToNotes`) so saved doodles replay from stored notation alone | Lets the Library re-play a doodle offline with no separate note store, retroactively for already-saved doodles. |
+
+**Repo/package naming as built:** `apps/web`, `apps/mobile`,
+`packages/{mir,notation,schema}` (packages published under the `@lyd/*`
+scope). This replaces the v0.3 `packages/mir-wasm` name (§8).
 
 ---
 
@@ -90,6 +113,13 @@ Three tiers, with a hard rule: **Tier 1 must be independently useful forever, ev
 
 Suggested frontend stack: **Vite + React + TypeScript**, Zustand for state, **wa-sqlite or SQLite-WASM over OPFS** for storage, Workbox for offline caching, Tailwind for UI. All app assets (including WASM/ONNX model files, soundfonts) precached for full offline cold-start.
 
+> **As built (P0):** Vite + React + TypeScript + Zustand ✓; storage is
+> `@sqlite.org/sqlite-wasm` on the OPFS **SAH-pool** VFS (no COOP/COEP
+> needed — see §0/§5.1); offline caching via Workbox through
+> `vite-plugin-pwa`. UI is **hand-written CSS** (custom properties), not
+> Tailwind — the surface was small enough that a utility framework wasn't
+> worth the dependency. No ONNX models or soundfonts are bundled at P0.
+
 ---
 
 ## 3. Model & Inference Layer (Tier 3)
@@ -137,6 +167,15 @@ Python 3.11 + FastAPI + job queue (arq/Redis or n8n webhook flows). GPU-accelera
 Legend: **T1** = fully on-device/offline · **T2** = needs Cloudflare edge only · **T3** = needs home LLM/GPU. Every T3 feature lists its offline fallback.
 
 ### 4.1 Listening & analysis
+
+> **As built (P0):** the "Essentia.js / ONNX" implementations below were
+> realized as a single **dependency-free TypeScript engine** (`packages/mir`)
+> — chromagram + 24 chord-template Viterbi HMM, Krumhansl–Schmuckler key,
+> spectral-flux/autocorrelation tempo, YIN pitch. Same algorithms, no WASM
+> or AGPL shipped, and it runs in Node for the CI accuracy gate. Essentia.js
+> can slot in behind these interfaces later if dense-mix accuracy needs it
+> (see §0 and §10 risk 1). The T3 rows (stems, full transcription, photo OMR)
+> are unchanged and remain later phases.
 
 | Feature | Tier | Implementation | Offline fallback |
 |---|---|---|---|
@@ -275,6 +314,17 @@ Children in the household are assumed users. These are requirements, not suggest
 
 ## 6. Cloudflare Edge Design (T2)
 
+> **As built (P0–P1):** the app ships on **GitHub Pages**, not Cloudflare
+> Pages. A GitHub Actions workflow (`.github/workflows/pages.yml`) builds
+> `apps/web` with `BASE_PATH=/MonkeyMusic/` (project sites are served from a
+> subpath) and deploys on every push to `main`. This covers all of P0 and
+> P1, which are fully offline and need no edge compute. The Cloudflare
+> services below become relevant at **P2**, when the LLM tunnel, streaming
+> chat, and optional sync arrive — at which point `apps/web` can deploy to
+> Cloudflare Pages *as well* (same static build) or the Workers gateway can
+> sit in front of the existing home-lab tunnel independently of where the
+> static app is hosted. Hosting choice and edge-compute are decoupled.
+
 | Service | Role |
 |---|---|
 | **Pages** | Hosts the PWA; instant updates; also the artifact for Capacitor bundling |
@@ -315,21 +365,34 @@ The LLM gets tools rather than freeform power:
 ## 8. Suggested Repository & Deployment Layout
 
 ```
-lyd/
-  apps/web/            # Vite PWA (T1) — deployed to Cloudflare Pages
-  apps/mobile/         # Capacitor shell wrapping apps/web
-  packages/mir-wasm/   # Essentia.js, ONNX models, DSP worklets
-  packages/notation/   # abcjs/AlphaTab/Verovio wrappers, tonal.js transforms
-  packages/schema/     # zod schemas shared client/edge/homelab (quests, analysis, ABC envelope)
+MonkeyMusic/           # working name "Lyd"; packages scoped @lyd/*
+  apps/web/            # Vite + React PWA (T1) — the app; deployed to GitHub Pages
+  apps/mobile/         # Capacitor shell wrapping apps/web (Android target)
+  packages/mir/        # dependency-free TS MIR engine (FFT, chroma, chord HMM,
+                       #   key, tempo, YIN pitch) — runs in browser worker AND Node CI
+  packages/notation/   # abcjs wrappers + ABC⇄notes; tonal.js transforms + spell-engine (P1)
+                       #   (AlphaTab/Verovio deferred to P1/P3 per §9.1)
+  packages/schema/     # zod schemas + full SQLite DDL, shared client/edge/homelab
+  .github/workflows/   # ci.yml (typecheck + test + accuracy gate + build);
+                       #   pages.yml (build + deploy to GitHub Pages on push to main)
+  docs/                # this TDD
+  # --- added when Tier 2/3 land (P2+) ---
   edge/                # Workers, DO classes, wrangler.toml
   homelab/
     llm/               # vLLM config, system prompts, tool defs
     mir-service/       # FastAPI + Demucs/basic-pitch/MT3/music21
     compose.yaml       # Spark deployment; cloudflared sidecar
-  content/phrasebook/  # authored concept cards + bundled ABC examples
+  content/phrasebook/  # authored concept cards + bundled ABC examples (P1)
 ```
 
-CI: GitHub Actions → Pages deploy; homelab pulls via watchtower or manual `compose up`.
+CI/CD: GitHub Actions runs typecheck, tests (incl. the §9.1 accuracy gate),
+and the build on every branch; a separate Pages workflow deploys `apps/web`
+to GitHub Pages on push to `main` (see §6). At P2+, the homelab pulls via
+watchtower or manual `compose up`.
+
+> **Deploy note (as built):** the `github-pages` environment only permits
+> deployments from the repository's **default branch**, so `main` must be
+> set as the default branch for push-to-`main` deploys to publish.
 
 ---
 
@@ -356,13 +419,33 @@ CI: GitHub Actions → Pages deploy; homelab pulls via watchtower or manual `com
 | **Accuracy gate** | Ground-truth set of ~8 songs (varied genre, known chords/keys/tempi) run in CI against the WASM pipeline | "Good enough" = ≥70% chord-symbol accuracy at beat resolution on the set, key correct on ≥6/8, tempo within ±2 BPM. Below that, tune HMM smoothing before shipping. |
 | **P0 excludes** | All networking, spell engine, Phrasebook, goals UI beyond a stub journal table | Schema (§5.1) is created in full at P0 so later phases are additive migrations only. |
 
+**As-built reconciliation (v0.4).** Three cells above were refined during
+the build (see §0 for the full table):
+
+- **Analysis pipeline** — implemented as dependency-free TypeScript
+  (`packages/mir`), not the Essentia.js WASM pipeline; the accuracy gate
+  runs it in Node against **8 synthesized** ground-truth songs. Current
+  standing: **100%** beat-resolution chords, **8/8** keys, **≤0.2 BPM** —
+  comfortably above the ≥70% / ≥6-of-8 / ±2 BPM bar, but synth audio is
+  cleaner than real recordings, so this is a regression floor (§10 risk 1).
+- **SoundFont** — **not** bundled in P0; doodle/notation playback uses an
+  oscillator synth. The curated FluidR3 subset (~8–10 MB) is deferred to P1
+  with the instrument work. Keeps the P0 offline bundle lean.
+- **Doodler** — free-time-first capture with snap-to-grid as an opt-in is
+  implemented as specified; additionally, saved doodles carry their ABC and
+  can be replayed offline from it (`abcToNotes`).
+
+Everything else in the locked table (instruments, Android target, i18n from
+commit one, abcjs-only, import formats, full schema at P0) shipped as
+written.
+
 ---
 
 ## 10. Key Risks & Open Questions
 
 1. **On-device MIR accuracy vs. delight.** Chord estimation on dense mixes is imperfect. Mitigation: confidence display as vibe, not verdict ("pretty sure this is G-ish"); one-tap "ask the big brain" escalation to T3.
 2. **Spark throughput for long thinking-mode sessions.** 3B-active MoE helps, but Spark memory bandwidth caps tok/s; keep tutoring answers concise by prompt design; reserve thinking mode for analysis/composition turns.
-3. **AGPL (Essentia) & GPL (Verovio LGPL is fine) hygiene** if the app ever ships publicly — audit before any store release; swap-in candidates exist (Meyda, MIT) with accuracy tradeoffs.
+3. **AGPL (Essentia) & GPL (Verovio LGPL is fine) hygiene** if the app ever ships publicly — audit before any store release; swap-in candidates exist (Meyda, MIT) with accuracy tradeoffs. **Status (P0):** moot — the on-device engine is the MIT-licensed dependency-free `packages/mir` (no Essentia.js, no Verovio in the P0 bundle), so there is currently no AGPL/GPL surface on the client. This risk only re-emerges if Essentia.js is later adopted for accuracy, or Verovio for MusicXML engraving (P3) — audit at that point, not before.
 4. **ABC's limits** for dense piano music — MusicXML path must be first-class by P3, not an afterthought.
 5. **Soundfont size vs. quality** on mobile — curate per-instrument subsets; lazy-load extras when online.
 6. **Spell op vocabulary versioning.** LLM-commissioned spells must keep working across engine updates: ops are additive-only, schema carries `schema_version`, engine ships permanent back-compat interpreters per version. Never remove an op; deprecate by aliasing.
