@@ -1,0 +1,22 @@
+{
+  "name": "lyd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lyd — personal music education companion. P0: the offline instrument.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @lyd/web",
+    "build": "npm run build -w @lyd/web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p packages/schema && tsc --noEmit -p packages/mir && tsc --noEmit -p packages/notation && tsc --noEmit -p apps/web"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

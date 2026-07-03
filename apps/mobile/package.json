@@ -1,0 +1,17 @@
+{
+  "name": "@lyd/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor shell wrapping apps/web — Android is the P0 acceptance target (TDD §9.1).",
+  "scripts": {
+    "sync": "npm run build -w @lyd/web && cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/core": "^6.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0"
+  }
+}
