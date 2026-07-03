@@ -41,6 +41,12 @@ const N_STATE = STATES.length - 1;
 const SELF_TRANSITION = 0.88;
 const NO_CHORD_EMISSION = 0.4;
 const SILENCE_RMS = 1e-4;
+/**
+ * Emission sharpening exponent: scales the log-emission gap between competing
+ * templates so a bar of real evidence outweighs the Viterbi switch penalty
+ * (without it, a chord sharing two notes with its neighbor gets bridged over).
+ */
+const EMISSION_BETA = 3;
 
 export interface ChordFrameResult {
   labels: ChordLabel[];
@@ -71,7 +77,7 @@ export function decodeChords(c: ChromaFrames): ChordFrameResult {
         for (let p = 0; p < 12; p++) dot += chroma[p] * tpl[p];
         score = dot; // chroma is L2-normalized ⇒ cosine similarity in [0,1]
       }
-      emit[f * nStates + s] = Math.log(Math.max(score, 1e-6));
+      emit[f * nStates + s] = EMISSION_BETA * Math.log(Math.max(score, 1e-6));
     }
   }
 

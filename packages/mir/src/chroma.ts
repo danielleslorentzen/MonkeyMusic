@@ -45,6 +45,17 @@ export function chromagram(
       chroma[pc] += mag[k] * mag[k];
     }
 
+    // Log compression before normalization: an octave-stacked root would
+    // otherwise dominate the vector and let neighboring templates that share
+    // two notes score nearly as well as the true chord.
+    let max = 0;
+    for (let i = 0; i < 12; i++) max = Math.max(max, chroma[i]);
+    if (max > 1e-12) {
+      const eta = 100;
+      const denom = Math.log1p(eta);
+      for (let i = 0; i < 12; i++) chroma[i] = Math.log1p((eta * chroma[i]) / max) / denom;
+    }
+
     let norm = 0;
     for (let i = 0; i < 12; i++) norm += chroma[i] * chroma[i];
     norm = Math.sqrt(norm);
