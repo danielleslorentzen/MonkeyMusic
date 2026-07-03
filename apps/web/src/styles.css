@@ -374,6 +374,14 @@ body {
   background: #fdf8ef;
   border-radius: 12px;
   padding: 8px;
+  /* abcjs SVG inherits `fill` from the page's near-white theme text color,
+     which is near-invisible on the cream staff. Pin a dark ink instead. */
+  color: #22223b;
+}
+
+.abc-view svg path,
+.abc-view svg text {
+  fill: #22223b;
 }
 
 /* ---- tuner ---- */
