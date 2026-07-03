@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Includes the §9.1 accuracy gate: 8 ground-truth songs,
+      # ≥70% chord accuracy, key ≥6/8, tempo ±2 BPM.
+      - name: Test
+        run: npm test
+
+      - name: Build PWA
+        run: npm run build
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: lyd-web-dist
+          path: apps/web/dist
