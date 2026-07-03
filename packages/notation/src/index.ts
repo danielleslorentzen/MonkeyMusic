@@ -2,6 +2,7 @@ export {
   AccidentalTracker,
   midiToAbcNote,
   melodyToAbc,
+  abcToNotes,
   chordChartAbc,
   chordDisplayName,
 } from './abc';

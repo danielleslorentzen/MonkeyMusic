@@ -154,6 +154,85 @@ export function melodyToAbc(notes: NoteEvent[], opts: MelodyAbcOptions = {}): st
   return `${header}\n${tokens.join(' ')}`;
 }
 
+// Natural-letter → pitch-class semitone.
+const LETTER_SEMITONE: Record<string, number> = {
+  C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11,
+};
+
+/**
+ * Parse ABC produced by {@link melodyToAbc} back into note events, so a saved
+ * doodle can be replayed from its stored notation alone (no separate note
+ * store, works on already-saved doodles). Deliberately scoped to the subset
+ * this package emits — L:1/16, single voice, Q tempo header — not general ABC.
+ *
+ * Timing is reconstructed from the Q header; notes start at 0 (leading rests
+ * collapse), which is what playback wants anyway.
+ */
+export function abcToNotes(abc: string): NoteEvent[] {
+  const bpmMatch = abc.match(/Q:1\/4=(\d+)/);
+  const bpm = bpmMatch ? Number(bpmMatch[1]) : 100;
+  const unitSec = 60 / bpm / 4; // L:1/16
+
+  // Body = everything after the last header line (headers are `X:` style).
+  const lines = abc.split('\n');
+  const bodyLines = lines.filter((l) => !/^[A-Za-z]:/.test(l.trim()));
+  const body = bodyLines.join(' ').trim();
+  if (!body) return [];
+
+  const notes: NoteEvent[] = [];
+  let cursor = 0;
+  // Accidental state keyed by natural letter + octave, matching how
+  // AccidentalTracker scopes them; reset at each barline.
+  let accidentals = new Map<string, number>();
+
+  for (const raw of body.split(/\s+/)) {
+    const tok = raw.trim();
+    if (!tok) continue;
+    if (tok === '|' || tok === '|]' || tok === '||' || tok === '[|' || tok === ']') {
+      accidentals = new Map();
+      continue;
+    }
+
+    // Rest: z or x, optional duration.
+    const rest = tok.match(/^[zx](\d*)$/i);
+    if (rest) {
+      cursor += (rest[1] ? Number(rest[1]) : 1) * unitSec;
+      continue;
+    }
+
+    const m = tok.match(/^(\^|=|_)?([A-Ga-g])([,']*)(\d*)$/);
+    if (!m) continue; // ignore anything outside the emitted subset
+    const [, accidental, letterRaw, octaveMarks, durStr] = m;
+
+    const upper = letterRaw >= 'A' && letterRaw <= 'G';
+    const letter = letterRaw.toUpperCase();
+    const baseOctave = upper ? 4 : 5;
+    const downs = (octaveMarks.match(/,/g) ?? []).length;
+    const ups = (octaveMarks.match(/'/g) ?? []).length;
+    const octave = baseOctave - downs + ups;
+    const key = `${letter}${octave}`;
+
+    let alter: number;
+    if (accidental === '^') alter = 1;
+    else if (accidental === '_') alter = -1;
+    else if (accidental === '=') alter = 0;
+    else alter = accidentals.get(key) ?? 0; // carry within the bar
+    if (accidental) accidentals.set(key, alter);
+
+    const midi = (octave + 1) * 12 + LETTER_SEMITONE[letter] + alter;
+    const durUnits = durStr ? Number(durStr) : 1;
+    const duration = durUnits * unitSec;
+    notes.push({
+      midi,
+      start: Number(cursor.toFixed(3)),
+      duration: Number(duration.toFixed(3)),
+    });
+    cursor += duration;
+  }
+
+  return notes;
+}
+
 /** Pretty chord symbol for display: Cmaj → C, Amin → Am, N → N.C. */
 export function chordDisplayName(label: string): string {
   if (label === 'N') return 'N.C.';

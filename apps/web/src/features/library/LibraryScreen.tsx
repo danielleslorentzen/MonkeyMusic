@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AnalysisJson, ArtifactRow, RecordingRow, SessionRow } from '@lyd/schema';
+import { abcToNotes } from '@lyd/notation';
 import {
   deleteArtifact,
   deleteRecording,
@@ -11,6 +12,7 @@ import {
   logSession,
 } from '../../db/repo';
 import { deleteAudioBlob, loadAudioBlob } from '../../db/opfs';
+import { playNotes, type PlaybackHandle } from '../../audio/synth';
 import { AnalysisView } from '../../components/AnalysisView';
 import { AbcView } from '../../components/AbcView';
 
@@ -24,7 +26,32 @@ export function LibraryScreen() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [openRec, setOpenRec] = useState<{ row: RecordingRow; analysis: AnalysisJson | null; url: string | null } | null>(null);
   const [openDoodle, setOpenDoodle] = useState<ArtifactRow | null>(null);
+  const [doodlePlaying, setDoodlePlaying] = useState(false);
+  const doodlePlaybackRef = useRef<PlaybackHandle | null>(null);
   const [journalText, setJournalText] = useState('');
+
+  const stopDoodlePlayback = useCallback(() => {
+    doodlePlaybackRef.current?.stop();
+    doodlePlaybackRef.current = null;
+    setDoodlePlaying(false);
+  }, []);
+
+  // Stop any doodle playback when the detail view closes or the screen unmounts.
+  useEffect(() => {
+    if (!openDoodle) stopDoodlePlayback();
+  }, [openDoodle, stopDoodlePlayback]);
+  useEffect(() => stopDoodlePlayback, [stopDoodlePlayback]);
+
+  function toggleDoodlePlayback(abc: string) {
+    if (doodlePlaying) {
+      stopDoodlePlayback();
+      return;
+    }
+    const notes = abcToNotes(abc);
+    if (notes.length === 0) return;
+    doodlePlaybackRef.current = playNotes(notes, () => setDoodlePlaying(false));
+    setDoodlePlaying(true);
+  }
 
   const refresh = useCallback(() => {
     void listRecordings().then(setRecordings);
@@ -101,6 +128,9 @@ export function LibraryScreen() {
         </button>
         <h1 className="screen-title">{openDoodle.title}</h1>
         <AbcView abc={openDoodle.content} />
+        <button className="btn btn-primary" onClick={() => toggleDoodlePlayback(openDoodle.content)}>
+          {doodlePlaying ? `⏹ ${t('doodler.stopPlay')}` : `▶ ${t('doodler.play')}`}
+        </button>
         <button className="btn btn-danger" onClick={() => removeDoodle(openDoodle)}>
           🗑 {t('library.delete')}
         </button>

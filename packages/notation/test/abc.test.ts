@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { NoteEvent } from '@lyd/schema';
 import {
   AccidentalTracker,
+  abcToNotes,
   chordChartAbc,
   chordDisplayName,
   melodyToAbc,
@@ -99,6 +100,74 @@ describe('chordChartAbc', () => {
       { bpm: 120, beatsPerBar: 4 },
     );
     expect(abc.match(/"G"/g)!.length).toBe(1);
+  });
+});
+
+describe('abcToNotes', () => {
+  it('round-trips the melody pitch sequence in free-time mode', () => {
+    const notes: NoteEvent[] = [
+      { midi: 69, start: 0.0, duration: 0.45 },
+      { midi: 71, start: 0.5, duration: 0.28 },
+      { midi: 72, start: 0.8, duration: 0.3 },
+      { midi: 74, start: 1.15, duration: 0.5 },
+      { midi: 60, start: 1.8, duration: 0.3 },
+      { midi: 84, start: 2.2, duration: 0.3 },
+    ];
+    const abc = melodyToAbc(notes, { bpm: 100, snap: false });
+    const back = abcToNotes(abc);
+    expect(back.map((n) => n.midi)).toEqual([69, 71, 72, 74, 60, 84]);
+  });
+
+  it('recovers sharps and octave marks', () => {
+    // C#4, F#3, C6, C3 — exercises ^, lowercase/uppercase, , and ' marks.
+    const notes: NoteEvent[] = [
+      { midi: 61, start: 0, duration: 0.3 },
+      { midi: 54, start: 0.4, duration: 0.3 },
+      { midi: 84, start: 0.8, duration: 0.3 },
+      { midi: 48, start: 1.2, duration: 0.3 },
+    ];
+    const abc = melodyToAbc(notes, { bpm: 100, snap: false });
+    expect(abcToNotes(abc).map((n) => n.midi)).toEqual([61, 54, 84, 48]);
+  });
+
+  it('honors accidental carry within a token run (free time, no barlines)', () => {
+    // Two C#4 in a row: generator emits ^C then C; parser must carry the sharp.
+    const notes: NoteEvent[] = [
+      { midi: 61, start: 0, duration: 0.3 },
+      { midi: 61, start: 0.4, duration: 0.3 },
+      { midi: 60, start: 0.8, duration: 0.3 },
+    ];
+    const abc = melodyToAbc(notes, { bpm: 100, snap: false });
+    expect(abcToNotes(abc).map((n) => n.midi)).toEqual([61, 61, 60]);
+  });
+
+  it('reconstructs durations from the tempo header', () => {
+    const notes: NoteEvent[] = [{ midi: 69, start: 0, duration: 0.6 }];
+    const abc = melodyToAbc(notes, { bpm: 100, snap: false });
+    // 0.6s at bpm100 → 4 sixteenths → 4 * (0.15) = 0.6s back.
+    const back = abcToNotes(abc);
+    expect(back).toHaveLength(1);
+    expect(back[0].duration).toBeCloseTo(0.6, 2);
+  });
+
+  it('collapses leading rests so playback starts at 0', () => {
+    const notes: NoteEvent[] = [{ midi: 72, start: 2.0, duration: 0.3 }];
+    const back = abcToNotes(melodyToAbc(notes, { bpm: 100, snap: false }));
+    expect(back[0].start).toBe(0);
+  });
+
+  it('returns [] for an empty tune', () => {
+    expect(abcToNotes(melodyToAbc([]))).toEqual([]);
+  });
+
+  it('round-trips pitch sequence through snap mode too', () => {
+    const notes: NoteEvent[] = Array.from({ length: 6 }, (_, i) => ({
+      midi: 60 + i * 2,
+      start: i * 0.6,
+      duration: 0.6,
+    }));
+    const abc = melodyToAbc(notes, { bpm: 100, snap: true });
+    expect(abcToNotes(abc).map((n) => n.midi)).toEqual([60, 62, 64, 66, 68, 70]);
   });
 });
 
