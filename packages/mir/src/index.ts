@@ -1,0 +1,15 @@
+export { fft, hannWindow, magnitudeSpectrum } from './fft';
+export { chromagram, meanChroma, CHROMA_WIN, CHROMA_HOP } from './chroma';
+export type { ChromaFrames } from './chroma';
+export { decodeChords, framesToSegments, chordAt } from './chords';
+export type { ChordFrameResult } from './chords';
+export { estimateKey } from './key';
+export { estimateTempo, onsetEnvelope } from './tempo';
+export { yinPitch, trackPitch, PITCH_WIN, PITCH_HOP } from './pitch';
+export type { PitchResult, PitchFrame, YinOptions } from './pitch';
+export { segmentNotes } from './notes';
+export type { SegmentOptions } from './notes';
+export { summarizeTimbre } from './timbre';
+export type { TimbreSummary } from './timbre';
+export { mixToMono, resampleLinear, ANALYSIS_SAMPLE_RATE } from './resample';
+export { analyzeRecording, ENGINE_NAME, ENGINE_VERSION } from './analyze';
