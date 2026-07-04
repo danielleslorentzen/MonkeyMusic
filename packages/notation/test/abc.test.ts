@@ -179,3 +179,21 @@ describe('chordDisplayName', () => {
     expect(chordDisplayName('N')).toBe('N.C.');
   });
 });
+
+describe('abcToNotes chord groups', () => {
+  it('parses [CEG] as three simultaneous notes', () => {
+    const abc = 'X:1\nT:x\nM:none\nL:1/16\nQ:1/4=100\nK:C\n[CEG]4 c4';
+    const notes = abcToNotes(abc);
+    expect(notes).toHaveLength(4);
+    const chord = notes.filter((n) => n.start === 0);
+    expect(chord.map((n) => n.midi).sort((a, b) => a - b)).toEqual([60, 64, 67]);
+    // melody note starts after the chord's duration
+    expect(notes[3].start).toBeCloseTo(chord[0].duration, 3);
+  });
+
+  it('handles accidentals inside chord groups', () => {
+    const abc = 'X:1\nT:x\nM:none\nL:1/16\nQ:1/4=100\nK:C\n[^FAc]2';
+    const notes = abcToNotes(abc);
+    expect(notes.map((n) => n.midi).sort((a, b) => a - b)).toEqual([66, 69, 72]);
+  });
+});

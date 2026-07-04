@@ -160,6 +160,32 @@ const LETTER_SEMITONE: Record<string, number> = {
 };
 
 /**
+ * Parse one ABC note token (no duration suffix) to midi, tracking accidental
+ * carry within the bar. Returns null if the token isn't a note.
+ */
+function parseAbcNote(tok: string, accidentals: Map<string, number>): number | null {
+  const m = tok.match(/^(\^|=|_)?([A-Ga-g])([,']*)$/);
+  if (!m) return null;
+  const [, accidental, letterRaw, octaveMarks] = m;
+  const upper = letterRaw >= 'A' && letterRaw <= 'G';
+  const letter = letterRaw.toUpperCase();
+  const baseOctave = upper ? 4 : 5;
+  const downs = (octaveMarks.match(/,/g) ?? []).length;
+  const ups = (octaveMarks.match(/'/g) ?? []).length;
+  const octave = baseOctave - downs + ups;
+  const key = `${letter}${octave}`;
+
+  let alter: number;
+  if (accidental === '^') alter = 1;
+  else if (accidental === '_') alter = -1;
+  else if (accidental === '=') alter = 0;
+  else alter = accidentals.get(key) ?? 0;
+  if (accidental) accidentals.set(key, alter);
+
+  return (octave + 1) * 12 + LETTER_SEMITONE[letter] + alter;
+}
+
+/**
  * Parse ABC produced by {@link melodyToAbc} back into note events, so a saved
  * doodle can be replayed from its stored notation alone (no separate note
  * store, works on already-saved doodles). Deliberately scoped to the subset
@@ -200,26 +226,31 @@ export function abcToNotes(abc: string): NoteEvent[] {
       continue;
     }
 
-    const m = tok.match(/^(\^|=|_)?([A-Ga-g])([,']*)(\d*)$/);
+    // Chord group: [CEG]4 — all notes share the start; cursor advances once.
+    const group = tok.match(/^\[((?:(?:\^|=|_)?[A-Ga-g][,']*)+)\](\d*)$/);
+    if (group) {
+      const durUnits = group[2] ? Number(group[2]) : 1;
+      const duration = durUnits * unitSec;
+      const inner = group[1].match(/(\^|=|_)?[A-Ga-g][,']*/g) ?? [];
+      for (const noteTok of inner) {
+        const parsed = parseAbcNote(noteTok, accidentals);
+        if (parsed !== null) {
+          notes.push({
+            midi: parsed,
+            start: Number(cursor.toFixed(3)),
+            duration: Number(duration.toFixed(3)),
+          });
+        }
+      }
+      cursor += duration;
+      continue;
+    }
+
+    const m = tok.match(/^((?:\^|=|_)?[A-Ga-g][,']*)(\d*)$/);
     if (!m) continue; // ignore anything outside the emitted subset
-    const [, accidental, letterRaw, octaveMarks, durStr] = m;
-
-    const upper = letterRaw >= 'A' && letterRaw <= 'G';
-    const letter = letterRaw.toUpperCase();
-    const baseOctave = upper ? 4 : 5;
-    const downs = (octaveMarks.match(/,/g) ?? []).length;
-    const ups = (octaveMarks.match(/'/g) ?? []).length;
-    const octave = baseOctave - downs + ups;
-    const key = `${letter}${octave}`;
-
-    let alter: number;
-    if (accidental === '^') alter = 1;
-    else if (accidental === '_') alter = -1;
-    else if (accidental === '=') alter = 0;
-    else alter = accidentals.get(key) ?? 0; // carry within the bar
-    if (accidental) accidentals.set(key, alter);
-
-    const midi = (octave + 1) * 12 + LETTER_SEMITONE[letter] + alter;
+    const [, noteTok, durStr] = m;
+    const midi = parseAbcNote(noteTok, accidentals);
+    if (midi === null) continue;
     const durUnits = durStr ? Number(durStr) : 1;
     const duration = durUnits * unitSec;
     notes.push({

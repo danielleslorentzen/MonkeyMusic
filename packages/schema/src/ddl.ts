@@ -6,7 +6,32 @@
  * additive migrations only.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+/**
+ * Additive migrations, applied in order when the stored schema_version is
+ * older. Index 0 = migration to v2, etc. Never edit past entries.
+ */
+export const MIGRATIONS: string[] = [
+  // ---- v2 (P1): profiles + adult gate, user spells --------------------------
+  `
+CREATE TABLE IF NOT EXISTS profiles (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  kind       TEXT NOT NULL CHECK (kind IN ('adult','kid')),
+  emoji      TEXT NOT NULL DEFAULT '🙂',
+  pin_hash   TEXT NOT NULL DEFAULT '',   -- empty = no PIN set (adult only)
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS spells (
+  id         TEXT PRIMARY KEY,
+  origin     TEXT NOT NULL CHECK (origin IN ('bundled','user','llm')),
+  created_at INTEGER NOT NULL,
+  json       TEXT NOT NULL               -- Spell (zod-validated on read/write)
+);
+`,
+];
 
 export const DDL = `
 CREATE TABLE IF NOT EXISTS meta (

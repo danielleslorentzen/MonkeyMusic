@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AnalysisJson } from '@lyd/schema';
 import { chordChartAbc } from '@lyd/notation';
+import { useAppStore } from '../store';
 import { AbcView } from './AbcView';
 import { ChordTimeline } from './ChordTimeline';
 
@@ -12,6 +13,7 @@ function confidenceKey(c: number): string {
 /** Key + tempo + vibe badges, chord journey, and a toggleable chord chart. */
 export function AnalysisView({ analysis, title }: { analysis: AnalysisJson; title: string }) {
   const { t } = useTranslation();
+  const openConcept = useAppStore((s) => s.openConcept);
   const [showChart, setShowChart] = useState(false);
 
   const chartAbc = useMemo(
@@ -32,16 +34,17 @@ export function AnalysisView({ analysis, title }: { analysis: AnalysisJson; titl
   return (
     <div className="analysis-view">
       <div className="badge-row">
-        <div className="badge">
+        {/* "Name that feeling": tapping a badge or chord opens its Phrasebook card */}
+        <button className="badge badge-tappable" onClick={() => openConcept('key-home-base')}>
           <span className="badge-label">{t('results.key')}</span>
           <span className="badge-value">{keyLabel}</span>
           <span className="badge-sub">{t(confidenceKey(analysis.key.confidence))}</span>
-        </div>
-        <div className="badge">
+        </button>
+        <button className="badge badge-tappable" onClick={() => openConcept('tempo')}>
           <span className="badge-label">{t('results.tempo')}</span>
           <span className="badge-value">{Math.round(analysis.tempo.bpm)}</span>
           <span className="badge-sub">{t('results.bpm', { bpm: Math.round(analysis.tempo.bpm) })}</span>
-        </div>
+        </button>
         <div className="badge">
           <span className="badge-label">{t('results.brightness')}</span>
           <span className="badge-value badge-vibe">
@@ -51,7 +54,13 @@ export function AnalysisView({ analysis, title }: { analysis: AnalysisJson; titl
       </div>
 
       <h3 className="section-title">{t('results.timeline')}</h3>
-      <ChordTimeline segments={analysis.chords} />
+      <p className="hint">{t('results.tapHint')}</p>
+      <ChordTimeline
+        segments={analysis.chords}
+        onSegmentTap={(seg) => {
+          if (seg.label !== 'N') openConcept('major-minor');
+        }}
+      />
 
       <button className="btn btn-ghost" onClick={() => setShowChart((v) => !v)}>
         {t('results.chart')} {showChart ? '▴' : '▾'}

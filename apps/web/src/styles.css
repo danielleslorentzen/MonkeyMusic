@@ -604,3 +604,479 @@ body {
 .journal-entry p {
   margin: 4px 0 0;
 }
+
+/* ================= P1 ================= */
+
+/* ---- shared inputs ---- */
+.text-input {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  color: var(--text);
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.pin-input {
+  font-size: 1.6rem;
+  letter-spacing: 0.4em;
+  text-align: center;
+  max-width: 220px;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  min-height: 38px;
+  font-size: 0.85rem;
+}
+
+.btn-recording {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
+/* ---- badges tappable ---- */
+.badge-tappable {
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.badge-tappable:active {
+  transform: scale(0.97);
+}
+
+.chord-seg-tappable {
+  cursor: pointer;
+}
+
+/* ---- phrasebook ---- */
+.concept-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.concept-feeling {
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--accent);
+  margin: 0;
+}
+
+.concept-desc {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.concept-block {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.concept-block p {
+  margin: 6px 0 0;
+  font-size: 0.92rem;
+}
+
+.concept-block-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.concept-try {
+  border-color: color-mix(in srgb, var(--mint) 40%, transparent);
+}
+
+/* ---- mood palette ---- */
+.mood-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.mood-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mood-btn {
+  border: none;
+  border-radius: var(--radius);
+  padding: 16px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  cursor: pointer;
+  min-height: 92px;
+  transition: transform 0.08s ease;
+}
+
+.mood-btn:active {
+  transform: scale(0.94);
+}
+
+.mood-emoji {
+  font-size: 1.9rem;
+}
+
+.mood-word {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.mood-reveal,
+.mood-learn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.mood-learn {
+  color: var(--mint);
+}
+
+/* ---- grimoire ---- */
+.spell-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.spell-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  min-height: 116px;
+  position: relative;
+}
+
+.spell-card:active {
+  transform: scale(0.97);
+}
+
+.spell-sealed {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.spell-emoji {
+  font-size: 1.7rem;
+}
+
+.spell-name {
+  font-weight: 800;
+}
+
+.spell-flavor {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.spell-origin {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 0.62rem;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+.spell-origin-user {
+  background: color-mix(in srgb, var(--mint) 20%, transparent);
+  color: var(--mint);
+}
+
+.fizzle {
+  background: color-mix(in srgb, var(--accent-2) 14%, transparent);
+  color: var(--accent-2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+.cast-result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.before-after {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.ba-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ba-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  min-width: 46px;
+}
+
+.ba-pill {
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.ba-changed {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+}
+
+.reveal-card {
+  background: color-mix(in srgb, var(--mint) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--mint) 40%, transparent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reveal-line {
+  margin: 0;
+  font-style: italic;
+}
+
+.tweak-panel summary,
+.op-palette summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  padding: 8px 0;
+}
+
+.ops-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.op-block {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.op-block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.op-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.op-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+}
+
+.op-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.chip-row-tight {
+  gap: 6px;
+}
+
+.chip-small {
+  padding: 6px 12px;
+  min-height: 34px;
+  font-size: 0.78rem;
+}
+
+/* ---- goals ---- */
+.goal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.goal-check {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0;
+  min-width: 32px;
+}
+
+.goal-done .goal-title {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+.goal-party {
+  color: var(--mint);
+  font-size: 0.85rem;
+  animation: pulse 0.8s ease-in-out 3;
+}
+
+/* ---- garden ---- */
+.garden-svg {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--surface-2);
+}
+
+.garden-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* ---- profiles ---- */
+.home-header-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile-chip {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 999px;
+  color: var(--text);
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.profile-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.profile-current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.profile-emoji {
+  font-size: 2.2rem;
+}
+
+.profile-name {
+  font-weight: 800;
+}
+
+.journal-mood {
+  font-size: 1rem;
+}
+
+/* ---- kid mode: larger targets, icon-first (TDD §5.4 rule 7) ---- */
+.kid-mode {
+  font-size: 1.1rem;
+}
+
+.kid-mode .nav-emoji {
+  font-size: 1.9rem;
+}
+
+.kid-mode .nav-label {
+  font-size: 0.75rem;
+}
+
+.kid-mode .nav-btn {
+  min-height: 76px;
+}
+
+.kid-mode .btn {
+  min-height: 62px;
+  font-size: 1.1rem;
+}
+
+.kid-mode .mood-btn {
+  min-height: 116px;
+}
+
+.kid-mode .mood-emoji {
+  font-size: 2.6rem;
+}
+
+.kid-mode .spell-card {
+  min-height: 140px;
+}
+
+.kid-mode .spell-emoji {
+  font-size: 2.2rem;
+}
+
+.kid-mode .chip {
+  min-height: 52px;
+  padding: 12px 20px;
+}
