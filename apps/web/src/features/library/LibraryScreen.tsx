@@ -11,10 +11,14 @@ import {
   listSessions,
   logSession,
 } from '../../db/repo';
-import { deleteAudioBlob, loadAudioBlob } from '../../db/opfs';
+import { deleteAudioBlob, loadAudioBlob, saveAudioBlob } from '../../db/opfs';
 import { playNotes, type PlaybackHandle } from '../../audio/synth';
+import { startRecording, type RecordingHandle } from '../../audio/recorder';
 import { AnalysisView } from '../../components/AnalysisView';
 import { AbcView } from '../../components/AbcView';
+
+const JOURNAL_MOODS = ['😊', '😌', '🤔', '🔥', '😴', '🥳'];
+const SNAPSHOT_MAX_MS = 10_000;
 
 type Tab = 'recordings' | 'doodles' | 'journal';
 
@@ -29,6 +33,12 @@ export function LibraryScreen() {
   const [doodlePlaying, setDoodlePlaying] = useState(false);
   const doodlePlaybackRef = useRef<PlaybackHandle | null>(null);
   const [journalText, setJournalText] = useState('');
+  const [journalMood, setJournalMood] = useState('');
+  const [snapshotRef, setSnapshotRef] = useState('');
+  const [snapshotState, setSnapshotState] = useState<'idle' | 'recording'>('idle');
+  const snapshotHandleRef = useRef<RecordingHandle | null>(null);
+  const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [snapshotUrls, setSnapshotUrls] = useState<Record<string, string>>({});
 
   const stopDoodlePlayback = useCallback(() => {
     doodlePlaybackRef.current?.stop();
@@ -90,10 +100,45 @@ export function LibraryScreen() {
 
   async function jot() {
     const text = journalText.trim();
-    if (!text) return;
-    await logSession(text);
+    if (!text && !snapshotRef) return;
+    await logSession(text, journalMood, snapshotRef);
     setJournalText('');
+    setJournalMood('');
+    setSnapshotRef('');
     refresh();
+  }
+
+  async function toggleSnapshot() {
+    if (snapshotState === 'recording') {
+      await finishSnapshot();
+      return;
+    }
+    try {
+      snapshotHandleRef.current = await startRecording();
+      setSnapshotState('recording');
+      snapshotTimerRef.current = setTimeout(() => void finishSnapshot(), SNAPSHOT_MAX_MS);
+    } catch {
+      // mic denied — the journal still works without a snapshot
+    }
+  }
+
+  async function finishSnapshot() {
+    const handle = snapshotHandleRef.current;
+    if (!handle) return;
+    snapshotHandleRef.current = null;
+    if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    const { blob, mimeType } = await handle.stop();
+    const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
+    const ref = `snap-${Date.now()}.${ext}`;
+    await saveAudioBlob(ref, blob);
+    setSnapshotRef(ref);
+    setSnapshotState('idle');
+  }
+
+  async function loadSnapshotUrl(ref: string) {
+    if (snapshotUrls[ref]) return;
+    const blob = await loadAudioBlob(ref);
+    if (blob) setSnapshotUrls((u) => ({ ...u, [ref]: URL.createObjectURL(blob) }));
   }
 
   if (openRec) {
@@ -183,22 +228,63 @@ export function LibraryScreen() {
       {tab === 'journal' && (
         <div>
           <div className="journal-input">
+            <div className="chip-row">
+              {JOURNAL_MOODS.map((m) => (
+                <button
+                  key={m}
+                  className={`chip ${m === journalMood ? 'chip-active' : ''}`}
+                  onClick={() => setJournalMood(m === journalMood ? '' : m)}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
             <textarea
               value={journalText}
               placeholder={t('library.journal.placeholder')}
               onChange={(e) => setJournalText(e.target.value)}
               rows={2}
             />
-            <button className="btn btn-primary" onClick={jot} disabled={!journalText.trim()}>
-              ✏️ {t('library.journal.log')}
-            </button>
+            <div className="button-row">
+              <button
+                className={`btn btn-ghost ${snapshotState === 'recording' ? 'btn-recording' : ''}`}
+                onClick={() => void toggleSnapshot()}
+              >
+                {snapshotState === 'recording'
+                  ? `⏹ ${t('library.journal.snapStop')}`
+                  : snapshotRef
+                    ? `✓ ${t('library.journal.snapDone')}`
+                    : `🎙 ${t('library.journal.snap')}`}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={jot}
+                disabled={!journalText.trim() && !snapshotRef}
+              >
+                ✏️ {t('library.journal.log')}
+              </button>
+            </div>
           </div>
           <ul className="item-list">
             {sessions.length === 0 && <p className="hint">{t('library.empty.journal')}</p>}
             {sessions.map((s) => (
               <li key={s.id} className="journal-entry">
-                <span className="item-sub">{new Date(s.started_at).toLocaleString()}</span>
-                <p>{s.journal_text}</p>
+                <span className="item-sub">
+                  {s.mood && <span className="journal-mood">{s.mood} </span>}
+                  {new Date(s.started_at).toLocaleString()}
+                </span>
+                {s.journal_text && <p>{s.journal_text}</p>}
+                {s.snapshot_ref &&
+                  (snapshotUrls[s.snapshot_ref] ? (
+                    <audio controls src={snapshotUrls[s.snapshot_ref]} />
+                  ) : (
+                    <button
+                      className="btn btn-ghost btn-small"
+                      onClick={() => void loadSnapshotUrl(s.snapshot_ref)}
+                    >
+                      🔈 {t('library.journal.playSnap')}
+                    </button>
+                  ))}
               </li>
             ))}
           </ul>

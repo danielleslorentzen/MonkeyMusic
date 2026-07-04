@@ -5,7 +5,7 @@
  * in-memory database when OPFS is unavailable (e.g. plain-http dev).
  */
 import sqlite3InitModule, { type Database } from '@sqlite.org/sqlite-wasm';
-import { DDL, SCHEMA_VERSION } from '@lyd/schema';
+import { DDL, MIGRATIONS, SCHEMA_VERSION } from '@lyd/schema';
 
 export type DbRequest =
   | { id: number; op: 'init' }
@@ -31,6 +31,19 @@ async function init(): Promise<void> {
   }
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(DDL);
+
+  // Additive migrations (TDD §5.1: later phases are migrations only).
+  let current = 1;
+  db.exec({
+    sql: "SELECT value FROM meta WHERE key = 'schema_version'",
+    rowMode: 'object',
+    callback: (row: Record<string, unknown>) => {
+      current = Number(row.value) || 1;
+    },
+  });
+  for (let v = current; v < SCHEMA_VERSION; v++) {
+    db.exec(MIGRATIONS[v - 1]);
+  }
   db.exec({
     sql: `INSERT INTO meta(key, value) VALUES ('schema_version', ?)
           ON CONFLICT(key) DO UPDATE SET value = excluded.value`,

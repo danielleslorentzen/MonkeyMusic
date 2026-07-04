@@ -15,19 +15,26 @@ function segColor(label: string): string {
 }
 
 /** The "chord journey": proportional colored blocks, one per chord segment. */
-export function ChordTimeline({ segments }: { segments: ChordSegment[] }) {
+export function ChordTimeline({
+  segments,
+  onSegmentTap,
+}: {
+  segments: ChordSegment[];
+  onSegmentTap?: (segment: ChordSegment) => void;
+}) {
   const total = segments.length ? segments[segments.length - 1].end : 1;
   return (
     <div className="chord-timeline" role="img" aria-label="chord timeline">
       {segments.map((s, i) => (
         <div
           key={i}
-          className="chord-seg"
+          className={`chord-seg ${onSegmentTap ? 'chord-seg-tappable' : ''}`}
           style={{
             width: `${(((s.end - s.start) / total) * 100).toFixed(2)}%`,
             background: segColor(s.label),
           }}
           title={`${chordDisplayName(s.label)} · ${s.start.toFixed(1)}–${s.end.toFixed(1)}s`}
+          onClick={onSegmentTap ? () => onSegmentTap(s) : undefined}
         >
           <span className="chord-seg-label">{chordDisplayName(s.label)}</span>
         </div>

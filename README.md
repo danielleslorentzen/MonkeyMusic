@@ -20,23 +20,29 @@ independently useful forever, even if every connected feature disappears.
 | 🎤 Melody doodler — hum → notation (free-time first, snap optional) | ✅ |
 | 🎸 Tuner — chromatic, guitar EADGBE, drop-D, bass EADG, voice | ✅ |
 | 🥁 Metronome — 2/4…7/8 (incl. compound groupings), swing, tap tempo | ✅ |
-| 📚 Library — recordings, doodles, journal stub, SQLite over OPFS | ✅ |
+| 📚 Library — recordings, doodles, journal (mood + sound diary), SQLite over OPFS | ✅ |
 | 📴 Full offline PWA (everything precached, zero network calls) | ✅ |
+| 🪄 **P1** Spell engine + 15-spell grimoire, tweak & scribe editors | ✅ |
+| 📖 **P1** Phrasebook — 35 feeling-first concept cards with sound examples | ✅ |
+| 🎨 **P1** Chord mood palette (names revealed on demand) | ✅ |
+| 👨‍👧 **P1** Kid profiles + adult PIN gate, icon-first kid UI | ✅ |
+| 🧭 **P1** Goals ("little quests"), streak-free garden view | ✅ |
 | 🤖 Android shell (Capacitor) | scaffolded — see `apps/mobile/README.md` |
 
-Deliberately **not** in P0 (per TDD §9.1): networking of any kind, the spell
-engine, the Phrasebook, goals UI beyond the journal stub. The full §5.1
-database schema *is* created now so those arrive as additive migrations.
+Still ahead (P2+ per TDD §9): all networking — the LLM tunnel, conversational
+analysis, heavy MIR (stems/transcription), spell commissioning, sync.
 
 ## Layout
 
 ```
-apps/web/          Vite + React PWA — the app (deploys to Cloudflare Pages later)
-apps/mobile/       Capacitor Android shell wrapping apps/web
-packages/mir/      Pure-TS MIR engine: FFT, chromagram, chord HMM, key,
-                   tempo, YIN pitch, note segmentation
-packages/notation/ ABC generation (melody + chord charts) for abcjs
-packages/schema/   zod schemas + SQLite DDL shared by everything
+apps/web/           Vite + React PWA — the app (deployed to GitHub Pages)
+apps/mobile/        Capacitor Android shell wrapping apps/web
+packages/mir/       Pure-TS MIR engine: FFT, chromagram, chord HMM, key,
+                    tempo, YIN pitch, note segmentation
+packages/notation/  ABC generation + parsing (melody, chord charts) for abcjs
+packages/spells/    The spell engine: pure, closed-vocabulary tune transforms
+packages/schema/    zod schemas + SQLite DDL (v2: profiles, spells) shared by everything
+content/phrasebook/ Human-reviewed concept cards — the kid-facing theory surface
 ```
 
 The MIR engine is dependency-free TypeScript so the same code runs in the

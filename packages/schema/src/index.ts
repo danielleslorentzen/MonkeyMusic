@@ -1,16 +1,15 @@
 import { z } from 'zod';
+import { PITCH_CLASSES } from './pitch';
 
-export { DDL, SCHEMA_VERSION } from './ddl';
+export { DDL, MIGRATIONS, SCHEMA_VERSION } from './ddl';
+export * from './spells';
 
 // ---------------------------------------------------------------------------
 // Musical primitives
 // ---------------------------------------------------------------------------
 
-/** Pitch classes, sharps-canonical. */
-export const PITCH_CLASSES = [
-  'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
-] as const;
-export type PitchClass = (typeof PITCH_CLASSES)[number];
+export { PITCH_CLASSES } from './pitch';
+export type { PitchClass } from './pitch';
 
 /** Chord label: pitch class + quality, or 'N' for no-chord. */
 export const ChordLabelSchema = z.string().regex(/^(N|[A-G]#?(maj|min))$/);
@@ -103,6 +102,26 @@ export const ArtifactRowSchema = z.object({
   parent_id: z.string().nullable(),
 });
 export type ArtifactRow = z.infer<typeof ArtifactRowSchema>;
+
+export const ProfileRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(['adult', 'kid']),
+  emoji: z.string(),
+  pin_hash: z.string(),
+  created_at: z.number(),
+});
+export type ProfileRow = z.infer<typeof ProfileRowSchema>;
+
+export const GoalRowSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  kind: z.string(),
+  target: z.string(),
+  created_at: z.number(),
+  status: z.enum(['open', 'done', 'paused', 'dropped']),
+});
+export type GoalRow = z.infer<typeof GoalRowSchema>;
 
 export const SessionRowSchema = z.object({
   id: z.string(),
